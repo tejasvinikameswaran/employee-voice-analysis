@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Reading Between the Lines — Employee Voice Analysis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- Charts are hand-drawn inline SVG below — no external script dependency, so they render
+     reliably everywhere (including sandboxed previews that block third-party CDN scripts). -->
+<style>
+  :root{
+    --ink:#1B1F3B;
+    --ink-soft:#2A2F55;
+    --paper:#EDEEF2;
+    --paper-card:#FFFFFF;
+    --highlighter:#E8A33D;
+    --highlighter-soft:#F3C878;
+    --negative:#B14A3C;
+    --positive:#3F6659;
+    --muted:#5B5F6B;
+    --line:#D6D8E0;
+    --line-dark:#3B4070;
+    --max-w: 1080px;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+  }
+
+  *{ box-sizing: border-box; }
+  html{ scroll-behavior: smooth; overflow-x: hidden; width: 100%; }
+  body{
+    margin:0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'IBM Plex Sans', sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+    width: 100%;
+    text-align: center;
+  }
+
+  img, svg{ max-width: 100%; height: auto; }
+
+  a{ color: inherit; }
+  a:focus-visible, button:focus-visible{ outline: 3px solid var(--highlighter); outline-offset: 2px; }
+
+  .wrap{ max-width: var(--max-w); margin: 0 auto; padding: 0 28px; width: 100%; }
+
+  /* Prevent grid/flex children (esp. images, wide SVGs) from forcing horizontal overflow */
+  .chart-card, .artifact-card, .quote-card, .t-card, .memo-item, .stat,
+  .finding-row, .artifact-grid, .quote-strip, .transcript-compare, .memo,
+  .pipeline-row .step, .sc-item{
+    min-width: 0;
+  }
+
+  .eyebrow{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+
+  h1,h2,h3{ font-family:'Fraunces', serif; margin:0; }
+
+  /* -------- Highlighter signature element -------- */
+  mark.hl{
+    background: none;
+    color: inherit;
+    position: relative;
+    padding: 0 0.1em;
+  }
+  @media (min-width: 601px){
+    mark.hl{ white-space: nowrap; }
+  }
+  mark.hl::before{
+    content:"";
+    position: absolute;
+    left: -2px; right: -2px; top: 18%; bottom: 6%;
+    background: var(--highlighter-soft);
+    transform: rotate(-0.6deg);
+    z-index: -1;
+    border-radius: 2px 6px 3px 5px / 4px 3px 6px 2px;
+    opacity: 0.85;
+  }
+  .on-dark mark.hl::before{ opacity: 0.9; }
+  .on-dark mark.hl{ color: var(--ink); }
+
+  /* -------- Hero -------- */
+  header.hero{ padding: 96px 0 64px; }
+  header.hero .eyebrow{ color: var(--muted); margin-bottom: 22px; }
+  header.hero h1{
+    font-size: clamp(40px, 6vw, 64px);
+    font-weight: 500;
+    line-height: 1.08;
+    letter-spacing: -0.01em;
+    max-width: 15ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  header.hero .sub{
+    margin-top: 26px;
+    font-size: 19px;
+    color: var(--muted);
+    max-width: 56ch;
+    line-height: 1.6;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  header.hero .tagline{
+    margin-top: 20px;
+    font-size: 20px;
+    font-style: italic;
+    color: var(--ink-soft);
+    max-width: 58ch;
+    line-height: 1.5;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .stat-strip{
+    margin-top: 46px;
+    display:flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0;
+    border-top: 1px solid var(--line);
+  }
+  .stat-strip .stat{
+    flex: 1 1 160px;
+    padding: 20px 22px;
+    border-right: 1px solid var(--line);
+  }
+  .stat-strip .stat:last-child{ border-right:none; }
+  .stat-strip .num{
+    font-family:'Fraunces', serif;
+    font-size: 30px;
+    font-weight: 500;
+  }
+  .stat-strip .label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-top: 4px;
+  }
+
+  /* -------- Pipeline strip -------- */
+  .pipeline{
+    background: var(--ink);
+    color: #EDEEF2;
+    padding: 46px 0;
+  }
+  .pipeline .wrap{ }
+  .pipeline-row{
+    display:flex;
+    align-items:center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px 4px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 14px;
+  }
+  .pipeline-row .step{
+    background: var(--ink-soft);
+    border: 1px solid var(--line-dark);
+    border-radius: 20px;
+    padding: 8px 16px;
+    white-space: nowrap;
+  }
+  .pipeline-row .arrow{ color: var(--highlighter); opacity: 0.85; padding: 0 2px; }
+  .pipeline-cap{
+    margin-top: 20px;
+    font-size: 14px;
+    color: #B9BCD6;
+    max-width: 62ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* -------- Section shells -------- */
+  section{ padding: 84px 0; }
+  section.on-dark{ background: var(--ink); color: #EDEEF2; }
+  .section-head{ margin-bottom: 48px; }
+  .section-head .eyebrow{ color: var(--muted); margin-bottom: 14px; }
+  .on-dark .section-head .eyebrow{ color: #9EA2C4; }
+  .section-head h2{
+    font-size: clamp(28px, 4vw, 38px);
+    font-weight: 500;
+    line-height: 1.16;
+    max-width: 22ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* -------- Findings dashboard -------- */
+  .finding-row{
+    display:grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 40px;
+    align-items: center;
+    padding: 40px 0;
+    border-top: 1px solid var(--line);
+  }
+  .finding-row:last-of-type{ border-bottom: 1px solid var(--line); }
+  .chart-card{
+    background: var(--paper-card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 26px 22px 12px;
+  }
+  .chart-card h3{
+    font-size: 17px;
+    font-weight: 600;
+    font-family: 'IBM Plex Sans', sans-serif;
+    margin-bottom: 4px;
+  }
+  .chart-card .chart-cap{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .chart-holder{ position: relative; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .chart-holder svg{ width: 100%; min-width: 460px; height: auto; display:block; }
+  .bar-total{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    fill: var(--ink);
+  }
+  .bar-label{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size: 11px;
+    fill: var(--muted);
+  }
+  .chart-legend{
+    display:flex;
+    justify-content: center;
+    gap: 18px;
+    margin-top: 6px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    color: var(--muted);
+  }
+  .chart-legend .dot{
+    display:inline-block; width:9px; height:9px; border-radius: 2px; margin-right: 6px; vertical-align: middle;
+  }
+
+  .margin-note{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 13.5px;
+    color: var(--ink-soft);
+    line-height: 1.7;
+    padding-top: 18px;
+    border-top: 2px solid var(--line);
+  }
+  .margin-note b{ color: var(--ink); font-weight: 600; }
+  .margin-note .chip-row{
+    display:flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+  .margin-note .chip{
+    background: var(--paper-card);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  .margin-note .chip b{ display:block; font-size: 16px; }
+
+  .quote-strip{
+    margin-top: 8px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  .quote-card{
+    background: var(--paper-card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 20px 22px;
+  }
+  .quote-card p{ font-style: italic; font-size: 15px; margin: 0 0 10px; }
+  .quote-card .cite{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* -------- Featured insight -------- */
+  .insight-body{
+    font-size: 17px;
+    max-width: 68ch;
+    color: #D7D9EC;
+    margin-bottom: 34px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .insight-body strong{ color: #fff; }
+
+  .transcript-compare{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 30px;
+  }
+  .t-card{
+    background: var(--ink-soft);
+    border: 1px solid var(--line-dark);
+    border-radius: 10px;
+    padding: 20px 22px;
+  }
+  .t-card .t-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #9EA2C4;
+    margin-bottom: 12px;
+  }
+  .t-card .pros-cons{
+    display:flex; justify-content: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap;
+  }
+  .t-card .pc-pill{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--line-dark);
+    border-radius: 6px;
+    padding: 5px 10px;
+  }
+  .t-card p.transcript-line{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 13.5px;
+    line-height: 1.75;
+    color: #C7C9E0;
+    margin: 0;
+  }
+  .t-card .absent-note{
+    margin-top: 14px;
+    font-size: 12.5px;
+    color: #8B8FB0;
+    font-style: italic;
+  }
+
+  .stat-compare{
+    display:flex;
+    justify-content: center;
+    gap: 40px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    margin-bottom: 26px;
+  }
+  .sc-item{ }
+  .sc-num{
+    font-family:'Fraunces', serif;
+    font-weight: 500;
+    font-size: 46px;
+    line-height: 1;
+  }
+  .sc-item.neg .sc-num{ color: var(--highlighter); }
+  .sc-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: #9EA2C4;
+    margin-top: 6px;
+    max-width: 22ch;
+  }
+
+  .caveat{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+    color: #9EA2C4;
+    border-top: 1px solid var(--line-dark);
+    padding-top: 16px;
+    max-width: 70ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .implication{
+    margin-top: 28px;
+    padding: 22px 24px;
+    background: rgba(232,163,61,0.08);
+    border: 1px solid rgba(232,163,61,0.35);
+    border-radius: 10px;
+    font-size: 15.5px;
+    max-width: 68ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* -------- From insight to action -------- */
+  .artifact-grid{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    margin-bottom: 40px;
+  }
+  .artifact-card{
+    background: var(--paper-card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 22px;
+  }
+  .artifact-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .artifact-img{
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: #fff;
+  }
+  .artifact-cap{
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 14px;
+    margin-bottom: 0;
+    line-height: 1.6;
+  }
+
+  .rc-tree{ text-align: left; }
+  .rc-root{
+    background: var(--ink);
+    color: #fff;
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 16px;
+    padding: 14px 18px;
+    border-radius: 8px;
+    margin-bottom: 18px;
+  }
+  .rc-root-sub{
+    display: block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 400;
+    font-size: 11.5px;
+    color: #B9BCD6;
+    margin-top: 4px;
+  }
+  .rc-branch{
+    margin-bottom: 14px;
+    padding-left: 4px;
+  }
+  .rc-branch:last-child{ margin-bottom: 0; }
+  .rc-branch-head{
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .rc-num{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--highlighter-soft);
+    color: var(--ink);
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    font-size: 12px;
+  }
+  .rc-subs{
+    list-style: none;
+    margin: 0;
+    padding: 0 0 0 32px;
+    border-left: 1px dashed var(--line);
+    margin-left: 10px;
+  }
+  .rc-subs li{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.7;
+    padding-left: 4px;
+  }
+  .rc-subs li::before{ content: "\2013\0020"; color: var(--line-dark); }
+
+  .memo{
+    background: var(--paper-card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 34px 34px;
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 28px;
+  }
+  .memo .memo-item .eyebrow{ color: var(--negative); margin-bottom: 10px; }
+  .memo .memo-item:nth-child(2) .eyebrow{ color: var(--positive); }
+  .memo .memo-item:nth-child(3) .eyebrow{ color: var(--muted); }
+  .memo .memo-item p{ font-size: 14.5px; margin:0; }
+
+  .scope-note{
+    margin-top: 28px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+    color: var(--muted);
+    max-width: 68ch;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.7;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+  }
+
+  /* -------- Skills strip -------- */
+  .skills-strip{
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    padding: 30px 0;
+  }
+  .skills-strip .eyebrow{ color: var(--muted); display:block; margin-bottom: 16px; }
+  .skills-list{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 14px;
+    color: var(--ink-soft);
+    line-height: 2.1;
+  }
+  .skills-list .sep{ color: var(--line); margin: 0 10px; }
+
+  /* -------- Close -------- */
+  footer.close{
+    background: var(--ink);
+    color: #EDEEF2;
+    padding: 72px 0 56px;
+  }
+  footer.close h2{
+    font-size: clamp(24px, 3.4vw, 32px);
+    font-weight: 500;
+    max-width: 26ch;
+    margin-bottom: 20px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  footer.close p{
+    max-width: 62ch;
+    color: #C7C9E0;
+    font-size: 15.5px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .close-links{
+    margin-top: 28px;
+    display:flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: center;
+  }
+  .close-links a{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 13px;
+    text-decoration: none;
+    border: 1px solid var(--line-dark);
+    padding: 10px 18px;
+    border-radius: 24px;
+    background: var(--ink-soft);
+    transition: background 0.15s ease, border-color 0.15s ease;
+    display: inline-block;
+  }
+  .close-links a:hover{ background: #363C6E; border-color: var(--highlighter); }
+
+  .contact-wrap{ position: relative; }
+  .cta-btn{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: inherit;
+    cursor: pointer;
+    border: 1px solid var(--line-dark);
+    padding: 10px 18px;
+    border-radius: 24px;
+    background: var(--ink-soft);
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  .cta-btn:hover{ background: #363C6E; border-color: var(--highlighter); }
+  .cta-btn[aria-expanded="true"]{ background: #363C6E; border-color: var(--highlighter); }
+  .contact-menu{
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    min-width: 180px;
+    background: var(--ink-soft);
+    border: 1px solid var(--line-dark);
+    border-radius: 12px;
+    padding: 6px;
+    box-shadow: 0 12px 28px rgba(0,0,0,0.35);
+    z-index: 20;
+  }
+  .contact-menu a, .contact-item{
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+    text-decoration: none;
+    color: inherit;
+    background: none;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    padding: 10px 14px;
+    border-radius: 8px;
+    transition: background 0.12s ease;
+  }
+  .contact-menu a:hover, .contact-menu a:focus-visible,
+  .contact-item:hover, .contact-item:focus-visible{ background: rgba(232,163,61,0.16); }
+
+  .copy-toast{
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(12px);
+    background: var(--highlighter);
+    color: var(--ink);
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 12px 22px;
+    border-radius: 24px;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.28);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease, transform 0.18s ease;
+    z-index: 100;
+  }
+  .copy-toast.show{
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  .close-meta{
+    margin-top: 46px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line-dark);
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    color: #7C80A6;
+  }
+
+  /* -------- Responsive -------- */
+
+  /* Tablet (iPad portrait, small laptops) */
+  @media (max-width: 900px){
+    .wrap{ padding: 0 24px; }
+    .finding-row{ grid-template-columns: 1fr; gap: 22px; align-items: start; }
+    .quote-strip{ grid-template-columns: 1fr; }
+    .transcript-compare{ grid-template-columns: 1fr; }
+    .artifact-grid{ grid-template-columns: 1fr; }
+    .memo{ grid-template-columns: 1fr; gap: 26px; padding: 28px 26px; }
+    .margin-note{ border-left: none; border-top: 2px solid var(--line); padding-left: 0; padding-top: 16px; }
+  }
+
+  /* Phone (iPhone widths, portrait and landscape) */
+  @media (max-width: 600px){
+    .wrap{ padding: 0 20px; }
+    header.hero{ padding: 56px 0 40px; }
+    header.hero h1{ max-width: 100%; }
+    section{ padding: 48px 0; }
+    .pipeline{ padding: 34px 0; }
+
+    .stat-strip{ border-top: none; }
+    .stat-strip .stat{
+      flex: 1 1 100%;
+      border-right: none;
+      border-bottom: 1px solid var(--line);
+      padding: 16px 0;
+    }
+    .stat-strip .stat:first-child{ border-top: 1px solid var(--line); }
+
+    .pipeline-row{
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+    }
+    .pipeline-row .step{ text-align: center; white-space: normal; max-width: 100%; }
+    .pipeline-row .arrow{
+      display: block;
+      text-align: center;
+      transform: rotate(90deg);
+      padding: 2px 0;
+    }
+
+    .chart-card{ padding: 20px 16px 12px; }
+    .quote-card{ padding: 18px 18px; }
+    .quote-card p{ font-size: 14.5px; }
+
+    .t-card{ padding: 18px 18px; }
+    .stat-compare{ gap: 28px; }
+    .sc-num{ font-size: 38px; }
+
+    .memo{ padding: 24px 20px; }
+
+    .close-links{ flex-direction: column; align-items: stretch; }
+    .close-links a{ text-align: center; }
+    .contact-wrap{ width: 100%; }
+    .cta-btn{ width: 100%; }
+    .contact-menu{ left: 0; right: 0; min-width: 0; }
+
+    .skills-list{ line-height: 2.3; }
+  }
+
+  /* Very small phones (iPhone SE and similar) */
+  @media (max-width: 380px){
+    header.hero h1{ font-size: 32px; }
+    .section-head h2{ font-size: 24px; }
+    .sc-num{ font-size: 32px; }
+    .implication{ padding: 18px 18px; font-size: 14.5px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow">Case Study &middot; By Tejasvini Kameswaran</div>
+    <h1>Employee Voice Analysis: <mark class="hl">Amazon Fulfillment Centers</mark></h1>
+    <p class="tagline">Reading between the lines &mdash; what 137 employee reviews and video transcripts reveal about workplace experience, and about the blind spots built into how companies listen.</p>
+    <p class="sub">A pipeline that turns unstructured employee feedback into a ranked, pilot-ready intervention: cleaning and scoring the text, segmenting the workforce, tracing root causes, and designing a fix.</p>
+    <p class="sub" style="font-size:14px; margin-top:14px; font-family:'IBM Plex Mono', monospace; color:var(--muted);">Completed as part of a structured data analytics externship (Extern.com), working with publicly available employee reviews.</p>
+
+    <div class="stat-strip">
+      <div class="stat">
+        <div class="num">137</div>
+        <div class="label">Reviews &amp; transcripts analyzed</div>
+      </div>
+      <div class="stat">
+        <div class="num">2</div>
+        <div class="label">Feedback platforms compared</div>
+      </div>
+      <div class="stat">
+        <div class="num">5</div>
+        <div class="label">Stage analytical pipeline</div>
+      </div>
+      <div class="stat">
+        <div class="num">1</div>
+        <div class="label">Pilot-ready intervention</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="pipeline">
+  <div class="wrap">
+    <div class="pipeline-row">
+      <span class="step">Clean</span>
+      <span class="arrow">&rarr;</span>
+      <span class="step">Tokenize &amp; Score Sentiment</span>
+      <span class="arrow">&rarr;</span>
+      <span class="step">Segment the Workforce</span>
+      <span class="arrow">&rarr;</span>
+      <span class="step">Trace Root Causes</span>
+      <span class="arrow">&rarr;</span>
+      <span class="step">Design an Intervention</span>
+    </div>
+    <p class="pipeline-cap">A repeatable method for turning raw, messy text into a recommendation someone can actually act on, applied here to fulfillment center employee feedback, but built to generalize.</p>
+  </div>
+</div>
+
+<section id="findings">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">What the Data Shows</div>
+      <h2>Volume and tone don't always point the same direction</h2>
+    </div>
+
+    <div class="finding-row">
+      <div class="chart-card">
+        <h3>Sentiment by theme</h3>
+        <div class="chart-cap">Positive / neutral / negative mentions across the four leading themes</div>
+        <div class="chart-holder">
+          <svg viewBox="0 0 522 290" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Stacked bar chart of sentiment by theme">
+            <!-- Compensation & Benefits -->
+            <rect x="50" y="150.0" width="80" height="80.0" fill="var(--positive)" rx="2"/>
+            <rect x="50" y="60.0" width="80" height="90.0" fill="#C9CBD8" rx="2"/>
+            <rect x="50" y="40.0" width="80" height="20.0" fill="var(--negative)" rx="2"/>
+            <text x="90" y="32" text-anchor="middle" class="bar-total">76</text>
+            <text x="90" y="252" text-anchor="middle" class="bar-label">Compensation</text>
+            <text x="90" y="267" text-anchor="middle" class="bar-label">&amp; Benefits</text>
+            <!-- Break Time & Shift Length -->
+            <rect x="164" y="180.0" width="80" height="50.0" fill="var(--positive)" rx="2"/>
+            <rect x="164" y="122.5" width="80" height="57.5" fill="#C9CBD8" rx="2"/>
+            <rect x="164" y="102.5" width="80" height="20.0" fill="var(--negative)" rx="2"/>
+            <text x="204" y="94.5" text-anchor="middle" class="bar-total">51</text>
+            <text x="204" y="252" text-anchor="middle" class="bar-label">Break Time &amp;</text>
+            <text x="204" y="267" text-anchor="middle" class="bar-label">Shift Length</text>
+            <!-- Physical Strain & Repetitive Work -->
+            <rect x="278" y="200.0" width="80" height="30.0" fill="var(--positive)" rx="2"/>
+            <rect x="278" y="160.0" width="80" height="40.0" fill="#C9CBD8" rx="2"/>
+            <rect x="278" y="145.0" width="80" height="15.0" fill="var(--negative)" rx="2"/>
+            <text x="318" y="137" text-anchor="middle" class="bar-total">34</text>
+            <text x="318" y="252" text-anchor="middle" class="bar-label">Physical Strain</text>
+            <text x="318" y="267" text-anchor="middle" class="bar-label">&amp; Repetitive Work</text>
+            <!-- Depersonalization -->
+            <rect x="392" y="210.0" width="80" height="20.0" fill="var(--positive)" rx="2"/>
+            <rect x="392" y="177.5" width="80" height="32.5" fill="#C9CBD8" rx="2"/>
+            <rect x="392" y="167.5" width="80" height="10.0" fill="var(--negative)" rx="2"/>
+            <text x="432" y="159.5" text-anchor="middle" class="bar-total">25</text>
+            <text x="432" y="252" text-anchor="middle" class="bar-label">Depersonalization</text>
+            <line x1="35" y1="230" x2="502" y2="230" stroke="var(--line)" stroke-width="1"/>
+          </svg>
+          <div class="chart-legend">
+            <span><span class="dot" style="background:var(--positive)"></span>Positive</span>
+            <span><span class="dot" style="background:#C9CBD8"></span>Neutral</span>
+            <span><span class="dot" style="background:var(--negative)"></span>Negative</span>
+          </div>
+        </div>
+      </div>
+      <div class="margin-note">
+        <b>Pay and benefits</b> is the largest theme by volume and the most positive. <b>Physical strain</b> and <b>depersonalizing language</b> are smaller in raw count but carry a noticeably sharper negative edge, exactly the kind of pattern that gets diluted in an average.
+        <div class="chip-row">
+          <div class="chip"><b>42%</b>of pay &amp; benefits mentions are positive</div>
+          <div class="chip"><b>18%</b>of physical strain mentions are negative</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="finding-row">
+      <div class="chart-card">
+        <h3>Priority score by segment</h3>
+        <div class="chart-cap">Impact &times; Severity &times; Size, scored per workforce segment</div>
+        <div class="chart-holder">
+          <svg viewBox="0 0 550 290" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart of priority score by segment">
+            <rect x="45" y="30.0" width="70" height="200.0" fill="var(--highlighter)" rx="3"/>
+            <text x="80" y="22" text-anchor="middle" class="bar-total">100</text>
+            <text x="80" y="252" text-anchor="middle" class="bar-label">Pickers, Packers</text>
+            <text x="80" y="267" text-anchor="middle" class="bar-label">&amp; Sorters</text>
+            <rect x="145" y="110.0" width="70" height="120.0" fill="var(--ink-soft)" rx="3"/>
+            <text x="180" y="102" text-anchor="middle" class="bar-total">60</text>
+            <text x="180" y="252" text-anchor="middle" class="bar-label">General Warehouse</text>
+            <text x="180" y="267" text-anchor="middle" class="bar-label">Associates</text>
+            <rect x="245" y="194.0" width="70" height="36.0" fill="var(--ink-soft)" rx="3"/>
+            <text x="280" y="186" text-anchor="middle" class="bar-total">18</text>
+            <text x="280" y="252" text-anchor="middle" class="bar-label">Management &amp;</text>
+            <text x="280" y="267" text-anchor="middle" class="bar-label">Specialist</text>
+            <rect x="345" y="214.0" width="70" height="16.0" fill="var(--ink-soft)" rx="3"/>
+            <text x="380" y="206" text-anchor="middle" class="bar-total">8</text>
+            <text x="380" y="252" text-anchor="middle" class="bar-label">Contract &amp;</text>
+            <text x="380" y="267" text-anchor="middle" class="bar-label">Temporary</text>
+            <rect x="445" y="214.0" width="70" height="16.0" fill="var(--ink-soft)" rx="3"/>
+            <text x="480" y="206" text-anchor="middle" class="bar-total">8</text>
+            <text x="480" y="252" text-anchor="middle" class="bar-label">Drivers &amp;</text>
+            <text x="480" y="267" text-anchor="middle" class="bar-label">Logistics</text>
+            <line x1="35" y1="230" x2="530" y2="230" stroke="var(--line)" stroke-width="1"/>
+          </svg>
+        </div>
+      </div>
+      <div class="margin-note">
+        A simple scoring framework turned raw sentiment into a ranked list, no guesswork about which of five workforce segments to focus on first. One segment scored more than <b>65% higher</b> than the next.
+        <div class="chip-row">
+          <div class="chip"><b>100</b>top priority score</div>
+          <div class="chip"><b>24</b>people in that segment</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="quote-strip">
+      <div class="quote-card">
+        <p>&ldquo;Lot of work on your body&hellip; you're doing the same thing <mark class="hl">10 hours straight</mark>, lifting heavy, heavy boxes.&rdquo;</p>
+        <div class="cite">On physical strain &middot; structured review</div>
+      </div>
+      <div class="quote-card">
+        <p>&ldquo;Use break time&hellip; sign, scan something&hellip; end break, <mark class="hl">get in trouble</mark>.&rdquo;</p>
+        <div class="cite">On break enforcement &middot; structured review</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="on-dark" id="blindspot">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">The Pattern Worth Slowing Down For</div>
+      <h2>The blind spot inside <mark class="hl">structured feedback</mark></h2>
+    </div>
+
+    <p class="insight-body">Two platforms, describing the same jobs, told noticeably different stories. Structured reviews, the kind with fixed &ldquo;pros&rdquo; and &ldquo;cons&rdquo; boxes, kept people talking about categories the form already expects: pay, hours, management. Spoken, unstructured commentary made room for something that doesn't fit neatly into any box: <strong>being tracked and monitored like a number rather than a person.</strong></p>
+
+    <div class="transcript-compare">
+      <div class="t-card">
+        <div class="t-label">Structured review &middot; fixed categories</div>
+        <div class="pros-cons">
+          <span class="pc-pill">+ Pros</span>
+          <span class="pc-pill">&minus; Cons</span>
+          <span class="pc-pill">Advice to management</span>
+        </div>
+        <p class="transcript-line">&ldquo;good pay, benefits...&rdquo;<br>&ldquo;long hours, mandatory overtime, minimal light...&rdquo;</p>
+        <div class="absent-note">Surveillance / dehumanization language rarely surfaces here, it doesn't map to a pre-set field.</div>
+      </div>
+      <div class="t-card">
+        <div class="t-label">Spoken commentary &middot; open narrative</div>
+        <p class="transcript-line">&ldquo;&hellip;you're a number, right, not treated well as a number, honestly, <mark class="hl">it's like the military</mark>, you're a number&hellip;&rdquo;</p>
+        <div class="absent-note">No form field for this, it only surfaces when someone is free to describe the experience in their own words.</div>
+      </div>
+    </div>
+
+    <div class="stat-compare">
+      <div class="sc-item neg">
+        <div class="sc-num">60%</div>
+        <div class="sc-label">of usable spoken commentary referenced this theme</div>
+      </div>
+      <div class="sc-item">
+        <div class="sc-num">17%</div>
+        <div class="sc-label">of structured reviews did, on the same employer and role</div>
+      </div>
+    </div>
+
+    <div class="implication">
+      <strong>Why it matters beyond this dataset:</strong> if an AI-driven listening tool is trained only on structured, easy-to-scale review data, it will structurally under-detect harms that don't fit the categories that data collection method was built around, not because the model is weak, but because of what it was never shown.
+    </div>
+
+    <p class="caveat">Caveat, stated plainly: the spoken-commentary sample here is small (5 usable transcripts), so this is a directional pattern worth testing at scale, not a statistical claim. It's presented as a hypothesis for how listening infrastructure gets designed, not a verdict on this employer.</p>
+  </div>
+</section>
+
+<section id="action">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">From Insight to Action</div>
+      <h2>Analysis that ends in a decision, not just a chart</h2>
+    </div>
+
+    <div class="artifact-grid">
+      <div class="artifact-card">
+        <div class="artifact-label">Root Cause Tree</div>
+        <div class="rc-tree">
+          <div class="rc-root">Physical Strain &amp; Repetitive Work <span class="rc-root-sub">(intensifying during peak season)</span></div>
+          <div class="rc-branch">
+            <div class="rc-branch-head"><span class="rc-num">1</span>Increased workload &amp; pace during peak</div>
+            <ul class="rc-subs">
+              <li>No demand forecasting adjustment to pacing</li>
+              <li>Mandatory overtime without rotation</li>
+            </ul>
+          </div>
+          <div class="rc-branch">
+            <div class="rc-branch-head"><span class="rc-num">2</span>Inadequate staffing scaling for demand</div>
+            <ul class="rc-subs">
+              <li>No formal peak-season staffing process</li>
+              <li>Existing staff absorb overflow workload</li>
+            </ul>
+          </div>
+          <div class="rc-branch">
+            <div class="rc-branch-head"><span class="rc-num">3</span>Break &amp; task rotation limitations</div>
+            <ul class="rc-subs">
+              <li>Breaks centrally scheduled, not fatigue-adjusted</li>
+              <li>Inconsistent task rotation across shifts/leads</li>
+            </ul>
+          </div>
+          <div class="rc-branch">
+            <div class="rc-branch-head"><span class="rc-num">4</span>No real-time fatigue or strain monitoring</div>
+            <ul class="rc-subs">
+              <li>No dashboard/tracking for fatigue or strain signals</li>
+              <li>Issues surface only after injury/incident reports</li>
+            </ul>
+          </div>
+          <div class="rc-branch">
+            <div class="rc-branch-head"><span class="rc-num">5</span>Inherently repetitive, heavy manual tasks</div>
+            <ul class="rc-subs">
+              <li>Manual handling of heavy items</li>
+              <li>Limited ergonomic tools at certain stations</li>
+            </ul>
+          </div>
+        </div>
+        
+        <p class="artifact-cap">Traced the leading theme back through five contributing causes to identify the most actionable leverage point.</p>
+      </div>
+      <div class="artifact-card">
+        <div class="artifact-label">Friction Map</div>
+        <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjEyNTAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImJnLWdyYWRpZW50IiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3R5bGU9InN0b3AtY29sb3I6I2Y4ZmFmYztzdG9wLW9wYWNpdHk6MSIgLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojZTJlOGYwO3N0b3Atb3BhY2l0eToxIiAvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDxtYXJrZXIgaWQ9ImFycm93aGVhZCIgbWFya2VyV2lkdGg9IjEwIiBtYXJrZXJIZWlnaHQ9IjciIHJlZlg9IjkiIHJlZlk9IjMuNSIgb3JpZW50PSJhdXRvIj4KICAgICAgPHBvbHlnb24gcG9pbnRzPSIwIDAsIDEwIDMuNSwgMCA3IiBmaWxsPSIjNmI3MjgwIiAvPgogICAgPC9tYXJrZXI+CiAgPC9kZWZzPgoKICA8cmVjdCB3aWR0aD0iODAwIiBoZWlnaHQ9IjEyNTAiIGZpbGw9InVybCgjYmctZ3JhZGllbnQpIi8+CgogIDx0ZXh0IHg9IjQwMCIgeT0iNDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIyNiIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiMxZjI5MzciPgogICAgUGlja2VycywgUGFja2VycyAmYW1wOyBTb3J0ZXJzIEZyaWN0aW9uIEZsb3cgQ2hhcnQKICA8L3RleHQ+CiAgPHRleHQgeD0iNDAwIiB5PSI2NSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE1IiBmaWxsPSIjNmI3MjgwIj4KICAgIFJvbGUg4oaSIEZyaWN0aW9uIFBvaW50IOKGkiBCdXNpbmVzcyBJbXBhY3QgRmxvdwogIDwvdGV4dD4KCiAgPHJlY3QgeD0iODAiIHk9IjgwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjUwIiByeD0iOCIgZmlsbD0iI2ZlZjNjNyIgc3Ryb2tlPSIjZjU5ZTBiIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8dGV4dCB4PSIxMDAiIHk9IjEwMCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iIzkyNDAwZSI+4pqg77iPIENyaXRpY2FsIElzc3VlOjwvdGV4dD4KICA8dGV4dCB4PSIxMDAiIHk9IjExOCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmaWxsPSIjOTI0MDBlIj4KICAgIFBoeXNpY2FsIHN0cmFpbiBhbmQgc3VydmVpbGxhbmNlLXN0eWxlIGVuZm9yY2VtZW50IGNvbXBvdW5kIGludG8gYSBzZWxmLXJlaW5mb3JjaW5nIHR1cm5vdmVyIGN5Y2xlCiAgPC90ZXh0PgoKICA8cmVjdCB4PSIyODAiIHk9IjE1MCIgd2lkdGg9IjI0MCIgaGVpZ2h0PSI2MCIgcng9IjEyIiBmaWxsPSIjZGJlYWZlIiBzdHJva2U9IiMzYjgyZjYiIHN0cm9rZS13aWR0aD0iMyIvPgogIDx0ZXh0IHg9IjQwMCIgeT0iMTcwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTQiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjMWU0MGFmIj7wn5GlIEVNUExPWUVFIFJPTEU8L3RleHQ+CiAgPHRleHQgeD0iNDAwIiB5PSIxOTIiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNSIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiMxZTQwYWYiPlBpY2tlcnMsIFBhY2tlcnMgJmFtcDsgU29ydGVyczwvdGV4dD4KCiAgPGxpbmUgeDE9IjQwMCIgeTE9IjIxMCIgeDI9IjQwMCIgeTI9IjI0MCIgc3Ryb2tlPSIjNmI3MjgwIiBzdHJva2Utd2lkdGg9IjIiIG1hcmtlci1lbmQ9InVybCgjYXJyb3doZWFkKSIvPgoKICA8cmVjdCB4PSIyMjAiIHk9IjI1MCIgd2lkdGg9IjM2MCIgaGVpZ2h0PSI4NSIgcng9IjEyIiBmaWxsPSIjZmVmM2M3IiBzdHJva2U9IiNmNTllMGIiIHN0cm9rZS13aWR0aD0iMiIvPgogIDx0ZXh0IHg9IjQwMCIgeT0iMjcwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTIiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjOTI0MDBlIj7imqDvuI8gRlJJQ1RJT04gUE9JTlQ8L3RleHQ+CiAgPHRleHQgeD0iNDAwIiB5PSIyOTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMyIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiM5MjQwMGUiPjEwLTEyIGhyIHNoaWZ0cywgaGVhdnkgbGlmdGluZywgbWFuZGF0b3J5IE9UPC90ZXh0PgogIDx0ZXh0IHg9IjQwMCIgeT0iMzA4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiM5MjQwMGUiIGZvbnQtc3R5bGU9Iml0YWxpYyI+CiAgICAibG90IHdvcmsgYm9keS4uLmxpZnRpbmcgaGVhdnkgaGVhdnkgYm94ZXMiCiAgPC90ZXh0PgogIDx0ZXh0IHg9IjQwMCIgeT0iMzIzIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiM5MjQwMGUiIGZvbnQtc3R5bGU9Iml0YWxpYyI+CiAgICBsaXR0bGUgcm90YXRpb24gcmVsaWVmIGJldHdlZW4gdGFza3MKICA8L3RleHQ+CgogIDxsaW5lIHgxPSI0MDAiIHkxPSIzMzUiIHgyPSI0MDAiIHkyPSIzNjUiIHN0cm9rZT0iIzZiNzI4MCIgc3Ryb2tlLXdpZHRoPSIyIiBtYXJrZXItZW5kPSJ1cmwoI2Fycm93aGVhZCkiLz4KCiAgPHJlY3QgeD0iMjYwIiB5PSIzNzUiIHdpZHRoPSIyODAiIGhlaWdodD0iNTUiIHJ4PSIxMiIgZmlsbD0iI2ZlZTJlMiIgc3Ryb2tlPSIjZGMyNjI2IiBzdHJva2Utd2lkdGg9IjIiLz4KICA8dGV4dCB4PSI0MDAiIHk9IjM5MiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iIzk5MWIxYiI+8J+TiSBCVVNJTkVTUyBJTVBBQ1Q8L3RleHQ+CiAgPHRleHQgeD0iNDAwIiB5PSI0MTIiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMyIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiM5OTFiMWIiPlBoeXNpY2FsL21lbnRhbCBleGhhdXN0aW9uLCBidXJub3V0IHJpc2s8L3RleHQ+CgogIDxsaW5lIHgxPSI0MDAiIHkxPSI0MzAiIHgyPSI0MDAiIHkyPSI0NjAiIHN0cm9rZT0iIzZiNzI4MCIgc3Ryb2tlLXdpZHRoPSIyIiBtYXJrZXItZW5kPSJ1cmwoI2Fycm93aGVhZCkiLz4KCiAgPHJlY3QgeD0iMjIwIiB5PSI0NzAiIHdpZHRoPSIzNjAiIGhlaWdodD0iODUiIHJ4PSIxMiIgZmlsbD0iI2ZlZjNjNyIgc3Ryb2tlPSIjZjU5ZTBiIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8dGV4dCB4PSI0MDAiIHk9IjQ5MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iIzkyNDAwZSI+4pqg77iPIEZSSUNUSU9OIFBPSU5UPC90ZXh0PgogIDx0ZXh0IHg9IjQwMCIgeT0iNTEwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTMiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjOTI0MDBlIj5CcmVhay9iYXRocm9vbSB1c2Ugc2Nhbm5lZCwgY2FtZXJhcyBuZWFyYnk8L3RleHQ+CiAgPHRleHQgeD0iNDAwIiB5PSI1MjgiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMCIgZmlsbD0iIzkyNDAwZSIgZm9udC1zdHlsZT0iaXRhbGljIj4KICAgICJ1c2UgYnJlYWsgdGltZS4uLnNpZ24gc2Nhbi4uLmdldCB0cm91YmxlIgogIDwvdGV4dD4KICA8dGV4dCB4PSI0MDAiIHk9IjU0MyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjOTI0MDBlIiBmb250LXN0eWxlPSJpdGFsaWMiPgogICAgcmVzdHJvb21zIGZhciBmcm9tIGJyZWFrIGFyZWFzCiAgPC90ZXh0PgoKICA8bGluZSB4MT0iNDAwIiB5MT0iNTU1IiB4Mj0iNDAwIiB5Mj0iNTg1IiBzdHJva2U9IiM2YjcyODAiIHN0cm9rZS13aWR0aD0iMiIgbWFya2VyLWVuZD0idXJsKCNhcnJvd2hlYWQpIi8+CgogIDxyZWN0IHg9IjI0MCIgeT0iNTk1IiB3aWR0aD0iMzIwIiBoZWlnaHQ9IjU1IiByeD0iMTIiIGZpbGw9IiNmZWUyZTIiIHN0cm9rZT0iI2RjMjYyNiIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPHRleHQgeD0iNDAwIiB5PSI2MTIiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiM5OTFiMWIiPvCfk4kgQlVTSU5FU1MgSU1QQUNUPC90ZXh0PgogIDx0ZXh0IHg9IjQwMCIgeT0iNjMyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTMiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjOTkxYjFiIj5GZWVsaW5nIGRlaHVtYW5pemVkLCAidHJlYXRlZCBsaWtlIGEgbnVtYmVyIjwvdGV4dD4KCiAgPGxpbmUgeDE9IjQwMCIgeTE9IjY1MCIgeDI9IjQwMCIgeTI9IjY4MCIgc3Ryb2tlPSIjNmI3MjgwIiBzdHJva2Utd2lkdGg9IjIiIG1hcmtlci1lbmQ9InVybCgjYXJyb3doZWFkKSIvPgoKICA8cmVjdCB4PSIyMjAiIHk9IjY5MCIgd2lkdGg9IjM2MCIgaGVpZ2h0PSI4NSIgcng9IjEyIiBmaWxsPSIjZmVmM2M3IiBzdHJva2U9IiNmNTllMGIiIHN0cm9rZS13aWR0aD0iMiIvPgogIDx0ZXh0IHg9IjQwMCIgeT0iNzEwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTIiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjOTI0MDBlIj7imqDvuI8gRlJJQ1RJT04gUE9JTlQ8L3RleHQ+CiAgPHRleHQgeD0iNDAwIiB5PSI3MzAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMyIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiM5MjQwMGUiPlJhdGUgdHJhY2tpbmcgaWdub3JlcyBleHRlcm5hbCBkZWxheXM8L3RleHQ+CiAgPHRleHQgeD0iNDAwIiB5PSI3NDgiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMCIgZmlsbD0iIzkyNDAwZSIgZm9udC1zdHlsZT0iaXRhbGljIj4KICAgICJsYXRlIGZyZWlnaHQgdHJ1Y2tzLCBjb3dvcmtlcnMgdW5sb2FkaW5nIHNsb3dseSIKICA8L3RleHQ+CiAgPHRleHQgeD0iNDAwIiB5PSI3NjMiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMCIgZmlsbD0iIzkyNDAwZSIgZm9udC1zdHlsZT0iaXRhbGljIj4KICAgIGNvYWNoZWQvd3JpdHRlbiB1cCBmb3IgZmFjdG9ycyBvdXRzaWRlIHRoZWlyIGNvbnRyb2wKICA8L3RleHQ+CgogIDxsaW5lIHgxPSI0MDAiIHkxPSI3NzUiIHgyPSI0MDAiIHkyPSI4MDUiIHN0cm9rZT0iIzZiNzI4MCIgc3Ryb2tlLXdpZHRoPSIyIiBtYXJrZXItZW5kPSJ1cmwoI2Fycm93aGVhZCkiLz4KCiAgPHJlY3QgeD0iMjQwIiB5PSI4MTUiIHdpZHRoPSIzMjAiIGhlaWdodD0iNTUiIHJ4PSIxMiIgZmlsbD0iI2ZlZTJlMiIgc3Ryb2tlPSIjZGMyNjI2IiBzdHJva2Utd2lkdGg9IjIiLz4KICA8dGV4dCB4PSI0MDAiIHk9IjgzMiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iIzk5MWIxYiI+8J+TiSBCVVNJTkVTUyBJTVBBQ1Q8L3RleHQ+CiAgPHRleHQgeD0iNDAwIiB5PSI4NTIiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMyIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiM5OTFiMWIiPlBlcmNlaXZlZCB1bmZhaXJuZXNzIOKGkiBkaXNlbmdhZ2VtZW50PC90ZXh0PgoKICA8bGluZSB4MT0iNDAwIiB5MT0iODcwIiB4Mj0iNDAwIiB5Mj0iOTAwIiBzdHJva2U9IiM2YjcyODAiIHN0cm9rZS13aWR0aD0iMiIgbWFya2VyLWVuZD0idXJsKCNhcnJvd2hlYWQpIi8+CgogIDxyZWN0IHg9IjIyMCIgeT0iOTEwIiB3aWR0aD0iMzYwIiBoZWlnaHQ9IjcwIiByeD0iMTIiIGZpbGw9IiNmZWUyZTIiIHN0cm9rZT0iI2RjMjYyNiIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPHRleHQgeD0iNDAwIiB5PSI5MzAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiM5OTFiMWIiPvCfk4kgQ09NUE9VTkRJTkcgSU1QQUNUPC90ZXh0PgogIDx0ZXh0IHg9IjQwMCIgeT0iOTUwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTMiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjOTkxYjFiIj5IaWdoZXIgdHVybm92ZXIgaW4gY29yZSB0aHJvdWdocHV0IHJvbGU8L3RleHQ+CiAgPHRleHQgeD0iNDAwIiB5PSI5NjgiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMCIgZmlsbD0iIzk5MWIxYiIgZm9udC1zdHlsZT0iaXRhbGljIj5kdXJpbmcgcGVhayBzZWFzb24sIHdoZW4gc3RhZmZpbmcgbWF0dGVycyBtb3N0PC90ZXh0PgoKICA8ZWxsaXBzZSBjeD0iNDAwIiBjeT0iMTAzMCIgcng9IjEzMCIgcnk9IjMyIiBmaWxsPSIjZmVlMmUyIiBzdHJva2U9IiNkYzI2MjYiIHN0cm9rZS13aWR0aD0iMiIvPgogIDx0ZXh0IHg9IjQwMCIgeT0iMTAyNSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iIzk5MWIxYiI+8J+UhCBWSUNJT1VTIENZQ0xFPC90ZXh0PgogIDx0ZXh0IHg9IjQwMCIgeT0iMTA0MiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjExIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iIzk5MWIxYiI+TmV3IGhpcmVzIGZhY2Ugc2FtZSBzdHJhaW4sIGN5Y2xlIHJlcGVhdHM8L3RleHQ+CgogIDxwYXRoIGQ9Ik0gMjgwIDEwMzAgUSAxMjAgMTAzMCAxMjAgNTUwIFEgMTIwIDIwMCAyODAgMTgwIiBzdHJva2U9IiNkYzI2MjYiIHN0cm9rZS13aWR0aD0iMyIgZmlsbD0ibm9uZSIgc3Ryb2tlLWRhc2hhcnJheT0iOCw0IiBtYXJrZXItZW5kPSJ1cmwoI2Fycm93aGVhZCkiLz4KICA8dGV4dCB4PSI3MCIgeT0iNjAwIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTIiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjZGMyNjI2IiB0cmFuc2Zvcm09InJvdGF0ZSgtOTAgNzAgNjAwKSI+QmFjayB0byBTdGFydDwvdGV4dD4KCiAgPHJlY3QgeD0iNTAiIHk9IjEwODAiIHdpZHRoPSI3MDAiIGhlaWdodD0iODAiIHJ4PSI4IiBmaWxsPSIjZWNmZGY1IiBzdHJva2U9IiMxMGI5ODEiIHN0cm9rZS13aWR0aD0iMiIvPgogIDx0ZXh0IHg9IjcwIiB5PSIxMTAyIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTQiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjMDQ3ODU3Ij7wn5KhIEJyZWFrIHRoZSBDeWNsZTo8L3RleHQ+CiAgPHRleHQgeD0iNzAiIHk9IjExMjIiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzA0Nzg1NyI+MS4gUm90YXRlIHRhc2tzIGFuZCBhZGQgZmF0aWd1ZS1hZGp1c3RlZCBicmVhayBzY2hlZHVsaW5nIGR1cmluZyBwZWFrIHNlYXNvbjwvdGV4dD4KICA8dGV4dCB4PSI3MCIgeT0iMTE0MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmaWxsPSIjMDQ3ODU3Ij4yLiBSZWR1Y2Ugc3VydmVpbGxhbmNlLXN0eWxlIGJyZWFrIGVuZm9yY2VtZW50OyBhZGQgZXJnb25vbWljIHRvb2xzIGF0IG1hbnVhbCBzdGF0aW9uczwvdGV4dD4KICA8dGV4dCB4PSI3MCIgeT0iMTE1OCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmaWxsPSIjMDQ3ODU3Ij4zLiBBZGp1c3QgcmF0ZSBjYWxjdWxhdGlvbnMgdG8gYWNjb3VudCBmb3Igc3lzdGVtaWMgZGVsYXlzIG91dHNpZGUgd29ya2VyIGNvbnRyb2w8L3RleHQ+Cjwvc3ZnPgo=" alt="Friction map flowchart showing how physical strain compounds into turnover risk for the priority workforce segment" class="artifact-img" />
+        <p class="artifact-cap">Mapped how three friction points compound into a self-reinforcing cycle, and where to intervene to break it.</p>
+      </div>
+    </div>
+
+    <div class="memo">
+      <div class="memo-item">
+        <div class="eyebrow">Root cause</div>
+        <p>Task rotation is applied inconsistently across shifts, compounding physical strain during long shifts for the segment closest to fulfillment throughput.</p>
+      </div>
+      <div class="memo-item">
+        <div class="eyebrow">Recommended pilot</div>
+        <p>Standardize rotation scheduling in one zone for two weeks, tracked through rotation compliance and a daily fatigue self-rating.</p>
+      </div>
+      <div class="memo-item">
+        <div class="eyebrow">Why it's worth funding</div>
+        <p>Industry benchmarks put warehouse turnover replacement cost at $3,000&ndash;$10,000 per departure, low-cost prevention against a real, recurring cost.</p>
+      </div>
+    </div>
+
+    <p class="scope-note">Why start small, on purpose: a two-week, single-zone pilot is a deliberate scoping choice, not a limitation. Testing the mechanism at this scale, before recommending a company-wide rollout, is how you build real evidence without overclaiming impact the data can't yet support.</p>
+  </div>
+</section>
+
+<div class="skills-strip">
+  <div class="wrap">
+    <span class="eyebrow">Method &amp; Tools</span>
+    <div class="skills-list">
+      Python<span class="sep">&middot;</span>pandas<span class="sep">&middot;</span>sentiment analysis<span class="sep">&middot;</span>thematic coding<span class="sep">&middot;</span>workforce segmentation<span class="sep">&middot;</span>root-cause analysis (5 Whys)<span class="sep">&middot;</span>priority scoring frameworks<span class="sep">&middot;</span>executive communication (SCQA)
+    </div>
+  </div>
+</div>
+
+<footer class="close">
+  <div class="wrap">
+    <h2>Part of a broader question I keep coming back to</h2>
+    <p>How much of what gets built to &ldquo;listen&rdquo; to employees is shaped, quietly, by which data was easiest to collect. That question, what a listening tool can and can't see based on how it was fed, is the part of this work I find most worth sitting with, not just running the analysis, but questioning what the input data already decided before the analysis even started.</p>
+    <div class="close-links">
+      <a href="https://docs.google.com/presentation/d/1WUZfjuMXqWloRZdHUQxQmIp_BZadxzx4/edit?usp=sharing&ouid=103263027215498647239&rtpof=true&sd=true" target="_blank" rel="noopener">Presentation deck</a>
+      <div class="contact-wrap">
+        <button type="button" class="cta-btn" id="contactBtn" aria-haspopup="true" aria-expanded="false">Get in touch</button>
+        <div class="contact-menu" id="contactMenu" role="menu" hidden>
+          <button type="button" class="contact-item" id="emailItem" role="menuitem" data-email="kameswaran.t@northeastern.edu">Email &mdash; kameswaran.t@northeastern.edu</button>
+          <a href="https://www.linkedin.com/in/tejasvini-kameswaran/" role="menuitem" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+    </div>
+    <div class="close-meta">By Tejasvini Kameswaran. Completed as part of a data analytics externship (Extern.com). Independent analysis of publicly available employee reviews. Not affiliated with or endorsed by any employer named in the source data.</div>
+  </div>
+</footer>
+
+<div class="copy-toast" id="copyToast" role="status" aria-live="polite">Email copied to clipboard</div>
+
+<script>
+  (function(){
+    var btn = document.getElementById('contactBtn');
+    var menu = document.getElementById('contactMenu');
+    if(!btn || !menu) return;
+
+    function openMenu(){
+      menu.hidden = false;
+      btn.setAttribute('aria-expanded', 'true');
+    }
+    function closeMenu(){
+      menu.hidden = true;
+      btn.setAttribute('aria-expanded', 'false');
+    }
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      if(menu.hidden){ openMenu(); } else { closeMenu(); }
+    });
+    document.addEventListener('click', function(e){
+      if(!menu.hidden && !menu.contains(e.target) && e.target !== btn){ closeMenu(); }
+    });
+    document.addEventListener('keydown', function(e){
+      if(e.key === 'Escape'){ closeMenu(); btn.focus(); }
+    });
+
+    // Email: copy to clipboard with visible confirmation
+    var emailItem = document.getElementById('emailItem');
+    var toast = document.getElementById('copyToast');
+    var toastTimer = null;
+
+    function showToast(text){
+      toast.textContent = text;
+      toast.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function(){ toast.classList.remove('show'); }, 2200);
+    }
+
+    function fallbackCopy(text){
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch(err){ ok = false; }
+      document.body.removeChild(ta);
+      return ok;
+    }
+
+    if(emailItem){
+      emailItem.addEventListener('click', function(){
+        var email = emailItem.getAttribute('data-email');
+        if(navigator.clipboard && navigator.clipboard.writeText){
+          navigator.clipboard.writeText(email).then(function(){
+            showToast('Email copied to clipboard');
+          }).catch(function(){
+            var ok = fallbackCopy(email);
+            showToast(ok ? 'Email copied to clipboard' : ('Copy failed — ' + email));
+          });
+        } else {
+          var ok = fallbackCopy(email);
+          showToast(ok ? 'Email copied to clipboard' : ('Copy failed — ' + email));
+        }
+        closeMenu();
+      });
+    }
+  })();
+</script>
+
+</body>
+</html>
